@@ -37,14 +37,27 @@ def build_prompt(question: str, chunks) -> str:
 
     return f"""Rispondi alla domanda usando SOLO le informazioni nel contesto seguente.
 Se il contesto non contiene informazioni sufficienti, dillo chiaramente invece di inventare.
-Cita sempre la fonte (nome file, pagina) per ogni affermazione importante.
+
+IMPORTANTE: Non includere riferimenti a fonti, nomi di file o numeri di pagina nel testo della tua risposta. Scrivi solo la risposta in linguaggio naturale, le fonti verranno mostrate separatamente dall'applicazione.
 
 Contesto:
 {context}
 
 Domanda: {question}
 
-Risposta:"""
+Risposta (senza citazioni di fonti nel testo):"""
+
+
+def deduplicate_sources(chunks) -> list[dict]:
+    """Rimuove duplicati fonte+pagina, mantenendo l'ordine di rilevanza."""
+    seen = set()
+    sources = []
+    for chunk in chunks:
+        key = (chunk.filename, chunk.page_number)
+        if key not in seen:
+            seen.add(key)
+            sources.append({"filename": chunk.filename, "page": chunk.page_number})
+    return sources
 
 
 def ask_question(question: str, db: Session) -> dict:
@@ -64,11 +77,7 @@ def ask_question(question: str, db: Session) -> dict:
         messages=[{"role": "user", "content": prompt}],
     )
 
-    answer = response["message"]["content"]
-
-    sources = [
-        {"filename": chunk.filename, "page": chunk.page_number}
-        for chunk in chunks
-    ]
+    answer = response["message"]["content"].strip()
+    sources = deduplicate_sources(chunks)
 
     return {"answer": answer, "sources": sources}
