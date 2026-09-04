@@ -1,4 +1,4 @@
-﻿services:
+services:
   db:
     image: ankane/pgvector:latest
     restart: always
@@ -18,7 +18,6 @@
       DATABASE_URL: postgresql://postgres:postgres@db:5432/research_assistant
       OLLAMA_MODEL: phi3
       OLLAMA_HOST: http://host.docker.internal:11434
-
     ports:
       - "8000:8000"
     depends_on:
@@ -27,7 +26,6 @@
       - ./backend/uploads:/app/uploads
     extra_hosts:
       - "host.docker.internal:host-gateway"
-  
 
   frontend:
     build: ./frontend

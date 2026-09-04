@@ -1,3 +1,4 @@
+import os
 import ollama
 from sqlalchemy import text
 from sqlalchemy.orm import Session
@@ -5,7 +6,10 @@ from sqlalchemy.orm import Session
 from app.services.ingestion import _embedding_model
 
 OLLAMA_MODEL = "phi3"
-TOP_K = 5  # quanti chunk recuperare per rispondere
+TOP_K = 5
+
+OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")
+_ollama_client = ollama.Client(host=OLLAMA_HOST)
 
 
 def retrieve_relevant_chunks(question: str, db: Session, top_k: int = TOP_K):
@@ -72,7 +76,7 @@ def ask_question(question: str, db: Session) -> dict:
 
     prompt = build_prompt(question, chunks)
 
-    response = ollama.chat(
+    response = _ollama_client.chat(
         model=OLLAMA_MODEL,
         messages=[{"role": "user", "content": prompt}],
     )
