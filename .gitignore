@@ -19,3 +19,5 @@ backend/uploads/
 # Editor
 .vscode/
 .idea/
+
+.pytest_cache/
