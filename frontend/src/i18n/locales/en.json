@@ -1,0 +1,24 @@
+{
+  "app": {
+    "title": "Research Assistant",
+    "subtitle": "Upload your PDFs and ask questions about their content."
+  },
+  "documents": {
+    "heading": "Documents",
+    "dropzone_idle": "Drag a PDF here, or click to select one",
+    "dropzone_active": "Drop the PDF here...",
+    "uploading": "Uploading...",
+    "upload_error": "Upload failed. Please try again.",
+    "empty_list": "No documents uploaded yet.",
+    "pages": "pages"
+  },
+  "chat": {
+    "heading": "Chat",
+    "empty_state": "Ask a question about one of the uploaded documents.",
+    "placeholder": "Ask a question about the documents...",
+    "send": "Send",
+    "thinking": "Thinking... (can take up to 1 minute)",
+    "error": "Something went wrong with the request.",
+    "page_label": "p."
+  }
+}

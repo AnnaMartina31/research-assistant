@@ -1,0 +1,24 @@
+{
+  "app": {
+    "title": "Research Assistant",
+    "subtitle": "Carica i tuoi PDF e fai domande sul loro contenuto."
+  },
+  "documents": {
+    "heading": "Documenti",
+    "dropzone_idle": "Trascina un PDF qui, o clicca per selezionarlo",
+    "dropzone_active": "Rilascia il PDF qui...",
+    "uploading": "Caricamento in corso...",
+    "upload_error": "Errore durante il caricamento. Riprova.",
+    "empty_list": "Nessun documento ancora caricato.",
+    "pages": "pagine"
+  },
+  "chat": {
+    "heading": "Chat",
+    "empty_state": "Fai una domanda su uno dei documenti caricati.",
+    "placeholder": "Fai una domanda sui documenti...",
+    "send": "Invia",
+    "thinking": "Sto pensando... (può richiedere fino a 1 minuto)",
+    "error": "Errore durante la richiesta.",
+    "page_label": "pag."
+  }
+}

@@ -1,5 +1,6 @@
 import { useCallback, useState } from "react";
 import { useDropzone } from "react-dropzone";
+import { useTranslation } from "react-i18next";
 import { uploadDocument } from "../api/client";
 import type { Document } from "../types";
 
@@ -8,6 +9,7 @@ interface Props {
 }
 
 export default function DocumentUpload({ onUploadSuccess }: Props) {
+  const { t } = useTranslation();
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -23,13 +25,13 @@ export default function DocumentUpload({ onUploadSuccess }: Props) {
         const doc = await uploadDocument(file);
         onUploadSuccess(doc);
       } catch (err) {
-        setError("Errore durante il caricamento. Riprova.");
+        setError(t("documents.upload_error"));
         console.error(err);
       } finally {
         setUploading(false);
       }
     },
-    [onUploadSuccess]
+    [onUploadSuccess, t]
   );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -43,24 +45,27 @@ export default function DocumentUpload({ onUploadSuccess }: Props) {
       <div
         {...getRootProps()}
         style={{
-          border: "2px dashed #ccc",
-          borderRadius: "8px",
-          padding: "2rem",
+          border: `1.5px dashed ${isDragActive ? "var(--color-primary)" : "var(--color-border)"}`,
+          borderRadius: "var(--radius)",
+          padding: "2rem 1rem",
           textAlign: "center",
           cursor: "pointer",
-          backgroundColor: isDragActive ? "#f0f0f0" : "transparent",
+          backgroundColor: isDragActive ? "#eef2ff" : "var(--color-bg)",
+          transition: "all 0.15s ease",
         }}
       >
         <input {...getInputProps()} />
         {uploading ? (
-          <p>Caricamento in corso...</p>
+          <p style={{ margin: 0, color: "var(--color-text-muted)" }}>⏳ {t("documents.uploading")}</p>
         ) : isDragActive ? (
-          <p>Rilascia il PDF qui...</p>
+          <p style={{ margin: 0, color: "var(--color-primary)" }}>{t("documents.dropzone_active")}</p>
         ) : (
-          <p>Trascina un PDF qui, o clicca per selezionarlo</p>
+          <p style={{ margin: 0, color: "var(--color-text-muted)" }}>
+            📄 {t("documents.dropzone_idle")}
+          </p>
         )}
       </div>
-      {error && <p style={{ color: "red" }}>{error}</p>}
+      {error && <p style={{ color: "#dc2626", fontSize: "0.9rem" }}>{error}</p>}
     </div>
   );
 }
