@@ -1,3 +1,4 @@
+import re
 import os
 import ollama
 from sqlalchemy import text
@@ -85,3 +86,43 @@ def ask_question(question: str, db: Session) -> dict:
     sources = deduplicate_sources(chunks)
 
     return {"answer": answer, "sources": sources}
+
+def retrieve_hybrid(question: str, db: Session, top_k: int = TOP_K, pool: int = 30, rrf_k: int = 60):
+    """Fonde ricerca vettoriale e full-text (OR) con Reciprocal Rank Fusion."""
+    query_embedding = _embedding_model.encode(question).tolist()
+
+    words = re.sub(r"[^A-Za-z0-9 ]", " ", question).split()
+    or_query = " | ".join(w for w in words if len(w) > 2)
+
+    vector_rows = db.execute(text("""
+        SELECT chunks.id FROM chunks
+        ORDER BY chunks.embedding <=> CAST(:q AS vector)
+        LIMIT :pool
+    """), {"q": query_embedding, "pool": pool}).fetchall()
+
+    fts_rows = []
+    if or_query:
+        fts_rows = db.execute(text("""
+            SELECT chunks.id FROM chunks
+            WHERE to_tsvector('english', chunks.content) @@ to_tsquery('english', :tsq)
+            ORDER BY ts_rank(to_tsvector('english', chunks.content), to_tsquery('english', :tsq)) DESC
+            LIMIT :pool
+        """), {"tsq": or_query, "pool": pool}).fetchall()
+
+    scores = {}
+    for rank, row in enumerate(vector_rows, start=1):
+        scores[row.id] = scores.get(row.id, 0) + 1 / (rrf_k + rank)
+    for rank, row in enumerate(fts_rows, start=1):
+        scores[row.id] = scores.get(row.id, 0) + 1 / (rrf_k + rank)
+
+    best_ids = sorted(scores, key=scores.get, reverse=True)[:top_k]
+    if not best_ids:
+        return []
+
+    rows = db.execute(text("""
+        SELECT chunks.id, chunks.content, chunks.page_number, documents.filename
+        FROM chunks JOIN documents ON documents.id = chunks.document_id
+        WHERE chunks.id = ANY(:ids)
+    """), {"ids": best_ids}).fetchall()
+    by_id = {r.id: r for r in rows}
+    return [by_id[i] for i in best_ids]

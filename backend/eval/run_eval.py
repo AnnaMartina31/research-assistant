@@ -6,10 +6,12 @@ from pathlib import Path
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from app.services.rag import retrieve_relevant_chunks
+from app.services.rag import retrieve_relevant_chunks, retrieve_hybrid
 
 DB_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5433/research_assistant")
 KS = (1, 3, 5)
+MODE = os.getenv("RETRIEVAL", "vector")
+RETRIEVE = retrieve_hybrid if MODE == "hybrid" else retrieve_relevant_chunks
 
 
 def ranked_pages(chunks):
@@ -32,7 +34,7 @@ def main(path):
     misses = []
 
     for q in questions:
-        chunks = retrieve_relevant_chunks(q["question"], session, top_k=max(KS) * 3)
+        chunks = RETRIEVE(q["question"], session, top_k=max(KS) * 3)
         ranking = ranked_pages(chunks)
         pages = q.get("pages") or [q["page"]]
         targets = {(q["filename"], p) for p in pages}
@@ -49,7 +51,8 @@ def main(path):
             misses.append(q["question"])
 
     n = len(questions)
-    print(f"\nDomande: {n}")
+    print(f"\nModalita: {MODE}")
+    print(f"Domande: {n}")
     for k in KS:
         print(f"Hit rate@{k}: {hits[k] / n:.2%}")
     print(f"MRR: {rr_sum / n:.3f}")
