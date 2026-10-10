@@ -1,0 +1,22 @@
+[
+  {"question": "What fraction of units is randomly switched off during training?", "filename": "1706.03762v7.pdf", "page": 8},
+  {"question": "How many parallel attention subspaces does the base model use?", "filename": "1706.03762v7.pdf", "page": 5},
+  {"question": "Which optimisation algorithm was used to train the network?", "filename": "1706.03762v7.pdf", "page": 7},
+  {"question": "How many identical blocks are stacked in the encoder?", "filename": "1706.03762v7.pdf", "page": 3},
+  {"question": "Why are the similarity scores divided by a constant before normalisation?", "filename": "1706.03762v7.pdf", "page": 4},
+  {"question": "How does the model know the order of words without any recurrence?", "filename": "1706.03762v7.pdf", "page": 6},
+  {"question": "What size is the hidden layer inside the position-wise feed-forward network?", "filename": "1706.03762v7.pdf", "page": 5},
+  {"question": "How many sentence pairs were in the English-German training set?", "filename": "1706.03762v7.pdf", "page": 7},
+  {"question": "What hardware was used to train the models and for how long?", "filename": "1706.03762v7.pdf", "page": 7},
+  {"question": "How does the learning rate change during the first training steps?", "filename": "1706.03762v7.pdf", "page": 7},
+  {"question": "What technique softens the target labels to improve accuracy?", "filename": "1706.03762v7.pdf", "page": 8},
+  {"question": "What translation quality score did the big model reach on English to German?", "filename": "1706.03762v7.pdf", "page": 8},
+  {"question": "Why is the decoder prevented from looking at later positions?", "filename": "1706.03762v7.pdf", "page": 5},
+  {"question": "How does the cost of connecting distant positions compare with recurrent and convolutional layers?", "filename": "1706.03762v7.pdf", "page": 6},
+  {"question": "What happens to quality when the number of attention heads is too large or too small?", "filename": "1706.03762v7.pdf", "pages": [6, 7]},
+  {"question": "Was the model also tested on a task other than translation?", "filename": "1706.03762v7.pdf", "page": 9},
+  {"question": "Which kind of function is used to encode positions?", "filename": "1706.03762v7.pdf", "page": 6},
+  {"question": "How are the two embedding layers and the output projection related?", "filename": "1706.03762v7.pdf", "page": 5},
+  {"question": "What vocabulary size and tokenisation were used for English-German?", "filename": "1706.03762v7.pdf", "page": 7},
+  {"question": "What do the authors plan to study in future work?", "filename": "1706.03762v7.pdf", "page": 10}
+]

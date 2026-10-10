@@ -24,6 +24,8 @@ services:
       - db
     volumes:
       - ./backend/uploads:/app/uploads
+      - ./backend/eval:/app/eval
+
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
