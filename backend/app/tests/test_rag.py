@@ -2,8 +2,7 @@ from unittest.mock import patch
 
 from app.models import Document, Chunk
 from app.services.ingestion import _embedding_model
-from app.services.rag import retrieve_relevant_chunks, deduplicate_sources, ask_question
-
+from app.services.rag import retrieve_relevant_chunks, retrieve_hybrid, deduplicate_sources, ask_question
 
 def _add_document_with_chunk(db_session, filename: str, page: int, content: str):
     """Helper: crea un documento con un chunk e il suo embedding, salvati nel DB di test."""
@@ -68,7 +67,7 @@ def test_ask_question_with_no_documents_returns_fallback_message(db_session):
     assert "non ho trovato" in result["answer"].lower()
 
 
-@patch("app.services.rag.ollama.chat")
+@patch("app.services.rag._ollama_client.chat")
 def test_ask_question_calls_llm_and_returns_sources(mock_ollama_chat, db_session):
     _add_document_with_chunk(
         db_session, "scienza.pdf", 3, "La fotosintesi avviene nei cloroplasti delle piante."
@@ -83,3 +82,16 @@ def test_ask_question_calls_llm_and_returns_sources(mock_ollama_chat, db_session
     assert result["answer"] == "La fotosintesi e' un processo biologico."
     assert result["sources"] == [{"filename": "scienza.pdf", "page": 3}]
     mock_ollama_chat.assert_called_once()
+
+def test_retrieve_hybrid_finds_keyword_match(db_session):
+    _add_document_with_chunk(
+        db_session, "animali.pdf", 1, "Il gatto e' un animale domestico molto diffuso."
+    )
+    _add_document_with_chunk(
+        db_session, "cucina.pdf", 1, "La ricetta della carbonara richiede uova e guanciale."
+    )
+
+    results = retrieve_hybrid("carbonara", db_session, top_k=1)
+
+    assert len(results) == 1
+    assert results[0].filename == "cucina.pdf"

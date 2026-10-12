@@ -31,62 +31,6 @@ def retrieve_relevant_chunks(question: str, db: Session, top_k: int = TOP_K):
     return result.fetchall()
 
 
-def build_prompt(question: str, chunks) -> str:
-    """Costruisce il prompt con il contesto recuperato."""
-    context_blocks = []
-    for chunk in chunks:
-        context_blocks.append(
-            f"[Fonte: {chunk.filename}, pagina {chunk.page_number}]\n{chunk.content}"
-        )
-    context = "\n\n".join(context_blocks)
-
-    return f"""Rispondi alla domanda usando SOLO le informazioni nel contesto seguente.
-Se il contesto non contiene informazioni sufficienti, dillo chiaramente invece di inventare.
-
-IMPORTANTE: Non includere riferimenti a fonti, nomi di file o numeri di pagina nel testo della tua risposta. Scrivi solo la risposta in linguaggio naturale, le fonti verranno mostrate separatamente dall'applicazione.
-
-Contesto:
-{context}
-
-Domanda: {question}
-
-Risposta (senza citazioni di fonti nel testo):"""
-
-
-def deduplicate_sources(chunks) -> list[dict]:
-    """Rimuove duplicati fonte+pagina, mantenendo l'ordine di rilevanza."""
-    seen = set()
-    sources = []
-    for chunk in chunks:
-        key = (chunk.filename, chunk.page_number)
-        if key not in seen:
-            seen.add(key)
-            sources.append({"filename": chunk.filename, "page": chunk.page_number})
-    return sources
-
-
-def ask_question(question: str, db: Session) -> dict:
-    """Pipeline completa: retrieval + generazione risposta."""
-    chunks = retrieve_relevant_chunks(question, db)
-
-    if not chunks:
-        return {
-            "answer": "Non ho trovato documenti indicizzati per rispondere a questa domanda.",
-            "sources": [],
-        }
-
-    prompt = build_prompt(question, chunks)
-
-    response = _ollama_client.chat(
-        model=OLLAMA_MODEL,
-        messages=[{"role": "user", "content": prompt}],
-    )
-
-    answer = response["message"]["content"].strip()
-    sources = deduplicate_sources(chunks)
-
-    return {"answer": answer, "sources": sources}
-
 def retrieve_hybrid(question: str, db: Session, top_k: int = TOP_K, pool: int = 30, rrf_k: int = 60):
     """Fonde ricerca vettoriale e full-text (OR) con Reciprocal Rank Fusion."""
     query_embedding = _embedding_model.encode(question).tolist()
@@ -126,3 +70,60 @@ def retrieve_hybrid(question: str, db: Session, top_k: int = TOP_K, pool: int = 
     """), {"ids": best_ids}).fetchall()
     by_id = {r.id: r for r in rows}
     return [by_id[i] for i in best_ids]
+
+
+def build_prompt(question: str, chunks) -> str:
+    """Costruisce il prompt con il contesto recuperato."""
+    context_blocks = []
+    for chunk in chunks:
+        context_blocks.append(
+            f"[Fonte: {chunk.filename}, pagina {chunk.page_number}]\n{chunk.content}"
+        )
+    context = "\n\n".join(context_blocks)
+
+    return f"""Rispondi alla domanda usando SOLO le informazioni nel contesto seguente.
+Se il contesto non contiene informazioni sufficienti, dillo chiaramente invece di inventare.
+
+IMPORTANTE: Non includere riferimenti a fonti, nomi di file o numeri di pagina nel testo della tua risposta. Scrivi solo la risposta in linguaggio naturale, le fonti verranno mostrate separatamente dall'applicazione.
+
+Contesto:
+{context}
+
+Domanda: {question}
+
+Risposta (senza citazioni di fonti nel testo):"""
+
+
+def deduplicate_sources(chunks) -> list[dict]:
+    """Rimuove duplicati fonte+pagina, mantenendo l'ordine di rilevanza."""
+    seen = set()
+    sources = []
+    for chunk in chunks:
+        key = (chunk.filename, chunk.page_number)
+        if key not in seen:
+            seen.add(key)
+            sources.append({"filename": chunk.filename, "page": chunk.page_number})
+    return sources
+
+
+def ask_question(question: str, db: Session) -> dict:
+    """Pipeline completa: retrieval ibrido + generazione risposta."""
+    chunks = retrieve_hybrid(question, db)
+
+    if not chunks:
+        return {
+            "answer": "Non ho trovato documenti indicizzati per rispondere a questa domanda.",
+            "sources": [],
+        }
+
+    prompt = build_prompt(question, chunks)
+
+    response = _ollama_client.chat(
+        model=OLLAMA_MODEL,
+        messages=[{"role": "user", "content": prompt}],
+    )
+
+    answer = response["message"]["content"].strip()
+    sources = deduplicate_sources(chunks)
+
+    return {"answer": answer, "sources": sources}
