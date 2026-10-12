@@ -32,7 +32,7 @@ A RAG (Retrieval-Augmented Generation) application that lets you upload PDF docu
 
 **RAG flow:**
 1. PDF upload → page-by-page text extraction → chunking → embedding (`sentence-transformers`) → storage in Postgres/pgvector
-2. User question → question embedding → cosine similarity search over chunks → prompt construction with retrieved context → answer generation via LLM → answer + deduplicated sources
+2. User question → question embedding + full-text query → hybrid retrieval (pgvector cosine similarity + Postgres full-text, fused with Reciprocal Rank Fusion) → prompt construction with retrieved context → answer generation via LLM → answer + deduplicated sources
 
 ---
 
@@ -101,6 +101,7 @@ The backend includes an automated test suite with `pytest`, covering:
 - Semantic retrieval (finding the most relevant chunks for a question)
 - Source citation deduplication
 - Full RAG pipeline, with the LLM call mocked for fast, deterministic tests
+- Hybrid retrieval (keyword match through full-text + vector fusion)
 
 To run them:
 
@@ -112,7 +113,20 @@ pip install -r requirements.txt
 pytest -v
 ```
 
-*(requires a reachable test Postgres database — see the comments in `app/tests/conftest.py` for configuration)*
+The tests need a separate Postgres database. Create it once:
+
+```bash
+docker compose exec db psql -U postgres -c "CREATE DATABASE research_assistant_test;"
+docker compose exec db psql -U postgres -d research_assistant_test -c "CREATE EXTENSION IF NOT EXISTS vector;"
+```
+
+Then run the suite inside the backend container:
+
+```bash
+docker compose exec -e TEST_DATABASE_URL=postgresql://postgres:postgres@db:5432/research_assistant_test backend python -m pytest -v
+```
+
+From the host you can also run `pytest -v` in `backend/`; the default URL points to `localhost:5433`, and `TEST_DATABASE_URL` overrides it.
 
 ---
 
@@ -123,8 +137,25 @@ pytest -v
 - **Source deduplication**: retrieval can return multiple chunks from the same page; the sources shown to the user are deduplicated while preserving relevance order.
 - **Local LLM (Ollama) instead of a paid API**: for development and demo purposes I chose a local model (`phi3` via Ollama) to keep costs at zero and avoid depending on API keys — at the cost of response speed compared to a dedicated cloud service.
 - **Mocking the LLM in tests**: to keep the test suite fast and deterministic, the language model call is replaced with a fake response in the RAG pipeline tests, while semantic retrieval is tested with real embeddings.
+- **Hybrid retrieval, measured**: vector-only search missed keyword-heavy questions (e.g. "which optimizer" vs "Adam"). I added Postgres full-text search and fused the two rankings with Reciprocal Rank Fusion; MRR went from 0.683 to 0.835 on a 20-question set (see below). A first AND-based full-text query silently returned nothing for natural-language questions, which the evaluation script exposed.
 
 ---
+## Retrieval evaluation
+
+20 hand-written questions on one public paper (*Attention Is All You Need*), each with the page that contains the answer; the corpus also holds other PDFs as distractors. Metrics: hit rate@k and MRR over deduplicated pages (`backend/eval/run_eval.py`, no LLM involved).
+
+| Retrieval | Hit@1 | Hit@3 | Hit@5 | MRR |
+|---|---|---|---|---|
+| Vector (pgvector, all-MiniLM-L6-v2) | 50% | 80% | 85% | 0.683 |
+| Hybrid: vector + Postgres full-text (OR), Reciprocal Rank Fusion | 75% | 90% | 95% | 0.835 |
+
+A first hybrid version used an AND full-text query and returned zero matches for natural-language questions, so it behaved like plain vector search; switching to OR fixed it. The chat pipeline now uses the hybrid retriever.
+
+**Limits:** small single-author dataset, one document, and the OR variant was tuned on the same questions it is evaluated on, so the gain is indicative, not statistically established. Known weak spot: questions whose answer sits in a table.
+
+Reproduce: `docker compose exec backend sh -c "cd /app && RETRIEVAL=hybrid PYTHONPATH=/app python eval/run_eval.py"`
+**One-off setup:** `create_all` does not create the full-text index, so run once:
+`docker compose exec db psql -U postgres -d research_assistant -c "CREATE INDEX IF NOT EXISTS chunks_content_fts ON chunks USING GIN (to_tsvector('english', content));"`
 
 ## 📌 Possible future extensions
 
