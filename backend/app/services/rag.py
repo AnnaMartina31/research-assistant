@@ -1,6 +1,8 @@
 import re
 import os
 import ollama
+import json
+from typing import Iterator
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
@@ -127,3 +129,32 @@ def ask_question(question: str, db: Session) -> dict:
     sources = deduplicate_sources(chunks)
 
     return {"answer": answer, "sources": sources}
+
+def ask_question_stream(question: str, db: Session) -> Iterator[str]:
+    """Genera eventi SSE: prima le fonti, poi i token della risposta, infine 'done'."""
+    chunks = retrieve_hybrid(question, db)
+
+    if not chunks:
+        yield _sse("sources", {"sources": []})
+        yield _sse("token", {"text": "Non ho trovato documenti indicizzati per rispondere a questa domanda."})
+        yield _sse("done", {})
+        return
+
+    yield _sse("sources", {"sources": deduplicate_sources(chunks)})
+
+    prompt = build_prompt(question, chunks)
+    stream = _ollama_client.chat(
+        model=OLLAMA_MODEL,
+        messages=[{"role": "user", "content": prompt}],
+        stream=True,
+    )
+    for part in stream:
+        token = part["message"]["content"]
+        if token:
+            yield _sse("token", {"text": token})
+
+    yield _sse("done", {})
+
+
+def _sse(event: str, data: dict) -> str:
+    return f"event: {event}\ndata: {json.dumps(data)}\n\n"

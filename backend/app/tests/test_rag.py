@@ -2,7 +2,7 @@ from unittest.mock import patch
 
 from app.models import Document, Chunk
 from app.services.ingestion import _embedding_model
-from app.services.rag import retrieve_relevant_chunks, retrieve_hybrid, deduplicate_sources, ask_question
+from app.services.rag import retrieve_relevant_chunks, retrieve_hybrid, deduplicate_sources, ask_question, ask_question_stream
 
 def _add_document_with_chunk(db_session, filename: str, page: int, content: str):
     """Helper: crea un documento con un chunk e il suo embedding, salvati nel DB di test."""
@@ -95,3 +95,20 @@ def test_retrieve_hybrid_finds_keyword_match(db_session):
 
     assert len(results) == 1
     assert results[0].filename == "cucina.pdf"
+
+@patch("app.services.rag._ollama_client.chat")
+def test_ask_question_stream_sends_sources_then_tokens(mock_ollama_chat, db_session):
+    _add_document_with_chunk(
+        db_session, "scienza.pdf", 3, "La fotosintesi avviene nei cloroplasti delle piante."
+    )
+    mock_ollama_chat.return_value = iter([
+        {"message": {"content": "La foto"}},
+        {"message": {"content": "sintesi."}},
+    ])
+
+    events = list(ask_question_stream("Cos'e' la fotosintesi?", db_session))
+
+    assert events[0].startswith("event: sources")
+    assert "scienza.pdf" in events[0]
+    assert "La foto" in events[1] and "sintesi." in events[2]
+    assert events[-1].startswith("event: done")
