@@ -8,6 +8,8 @@ from app.database import get_db
 from app.models import Document
 from app.services.ingestion import ingest_pdf
 
+from fastapi import APIRouter, UploadFile, File, Depends, HTTPException
+
 router = APIRouter(prefix="/documents", tags=["documents"])
 
 UPLOAD_DIR = Path("uploads")
@@ -26,6 +28,9 @@ def list_documents(db: Session = Depends(get_db)):
 @router.post("/upload")
 def upload_document(file: UploadFile = File(...), db: Session = Depends(get_db)):
     file_path = UPLOAD_DIR / file.filename
+
+    if db.query(Document).filter(Document.filename == file.filename).first():
+        raise HTTPException(status_code=409, detail="Document already uploaded")
 
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
