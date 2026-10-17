@@ -157,9 +157,12 @@ Reproduce: `docker compose exec backend sh -c "cd /app && RETRIEVAL=hybrid PYTHO
 **One-off setup:** `create_all` does not create the full-text index, so run once:
 `docker compose exec db psql -U postgres -d research_assistant -c "CREATE INDEX IF NOT EXISTS chunks_content_fts ON chunks USING GIN (to_tsvector('english', content));"`
 
+## Streaming answers
+
+`POST /chat/ask-stream` returns Server-Sent Events: a `sources` event right after retrieval, then one `token` event per generated token, then `done`. The frontend reads it with `fetch` and a `ReadableStream`, so sources appear immediately and the answer is written as it is generated. Covered by a unit test that mocks the LLM stream.
+
 ## 📌 Possible future extensions
 
-- Token-by-token response streaming
 - User authentication and private documents per account
 - Highlighting the exact cited passage inside the PDF
 - Multi-format support (docx, txt, markdown)
