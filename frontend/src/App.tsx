@@ -1,14 +1,18 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import DocumentUpload from "./components/DocumentUpload";
 import DocumentList from "./components/DocumentList";
 import ChatBox from "./components/ChatBox";
 import LanguageSwitcher from "./components/LanguageSwitcher";
 import type { Document } from "./types";
+import { listDocuments } from "./api/client";
 
 function App() {
   const { t } = useTranslation();
   const [documents, setDocuments] = useState<Document[]>([]);
+    useEffect(() => {
+    listDocuments().then(setDocuments).catch(console.error);
+  }, []);
 
   return (
     <div style={{ minHeight: "100vh" }}>

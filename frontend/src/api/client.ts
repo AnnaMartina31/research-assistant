@@ -18,6 +18,11 @@ export async function uploadDocument(file: File): Promise<Document> {
   return response.data;
 }
 
+export async function listDocuments(): Promise<Document[]> {
+  const response = await client.get<Document[]>("/documents");
+  return response.data;
+}
+
 export async function askQuestion(question: string): Promise<ChatResponse> {
   const response = await client.post<ChatResponse>("/chat/ask", { question });
   return response.data;
